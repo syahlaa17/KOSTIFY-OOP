@@ -2,7 +2,6 @@ package com.kostify.controller;
 
 import com.kostify.db.DatabaseConnection;
 import com.kostify.model.*;
-
 import java.sql.*;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -146,6 +145,61 @@ public class KostifyController {
         }
     }
 
+     // Update data Penyewa yang sudah ada
+    public boolean updatePenyewa(int idPenyewa, String nama, String ktp, int idKost) {
+        String sql = "UPDATE penyewa SET nama_penyewa = ?, nomor_ktp = ?, id_kost = ? WHERE id_penyewa = ?";
+ 
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+ 
+            pstmt.setString(1, nama);
+            pstmt.setString(2, ktp);
+            pstmt.setInt(3, idKost);
+            pstmt.setInt(4, idPenyewa);
+ 
+            return pstmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+ 
+    // Hapus Penyewa dan kurangi terisi di tabel Kost (pakai transaction)
+    public boolean hapusPenyewa(int idPenyewa, int idKost) {
+        String sqlDelete     = "DELETE FROM penyewa WHERE id_penyewa = ?";
+        String sqlUpdateKost = "UPDATE kost SET terisi = terisi - 1 WHERE id_kost = ? AND terisi > 0";
+ 
+        Connection conn = null;
+        try {
+            conn = DatabaseConnection.getConnection();
+            conn.setAutoCommit(false); // Mulai transaction
+ 
+            // Hapus penyewa
+            try (PreparedStatement pstmt1 = conn.prepareStatement(sqlDelete)) {
+                pstmt1.setInt(1, idPenyewa);
+                pstmt1.executeUpdate();
+            }
+ 
+            // Kurangi kuota terisi di kost
+            try (PreparedStatement pstmt2 = conn.prepareStatement(sqlUpdateKost)) {
+                pstmt2.setInt(1, idKost);
+                pstmt2.executeUpdate();
+            }
+ 
+            conn.commit(); // Simpan transaction
+            return true;
+        } catch (SQLException e) {
+            if (conn != null) {
+                try { conn.rollback(); } catch (SQLException ex) { ex.printStackTrace(); }
+            }
+            e.printStackTrace();
+            return false;
+        } finally {
+            if (conn != null) {
+                try { conn.close(); } catch (SQLException e) { e.printStackTrace(); }
+            }
+        }
+    }
  
     // OPERASI POS KASIR: TABEL TRANSAKSI
     // Mencatat transaksi pembayaran bulanan dan menghitung denda otomatis
