@@ -3,7 +3,6 @@ package com.kostify.view;
 import com.kostify.controller.KostifyController;
 import com.kostify.model.KamarPenuhException;
 import com.kostify.model.Kost;
-import com.kostify.model.Penyewa;
 import com.kostify.model.Transaksi;
 
 import javax.swing.*;
@@ -21,8 +20,11 @@ public class MainFrame extends JFrame {
     private KostifyController controller;
 
     // Komponen Tabel GUI
-    private JTable tabelKost, tabelPenyewa, tabelTransaksi;
-    private DefaultTableModel modelKost, modelPenyewa, modelTransaksi;
+    private JTable tabelKost, tabelTransaksi;
+    private DefaultTableModel modelKost, modelTransaksi;
+
+    // Panel penyewa (versi lengkap buatan Nadia) — dikelola sebagai kelas terpisah
+    private PanelPenyewa panelPenyewa;
 
     // Label kartu statistik panel Kost
     private JLabel lblTotalKamar, lblTerisi, lblKosong, lblHunian;
@@ -37,18 +39,43 @@ public class MainFrame extends JFrame {
         setLocationRelativeTo(null);
         setLayout(new BorderLayout());
 
-        // Judul Aplikasi Atas
-        JLabel lblHeader = new JLabel("KOSTIFY DASHBOARD MANAGEMENT", JLabel.CENTER);
-        lblHeader.setFont(new Font("SansSerif", Font.BOLD, 18));
-        lblHeader.setBorder(BorderFactory.createEmptyBorder(15, 10, 15, 10));
-        add(lblHeader, BorderLayout.NORTH);
+        // Judul Aplikasi Atas — header bar navy modern dengan gradient + subtitle
+        final Color navyHeader1 = new Color(13, 31, 61);   // navy gelap (#0D1F3D)
+        final Color navyHeader2 = new Color(28, 58, 110);  // navy sedang (#1C3A6E)
+        JPanel headerBar = new JPanel(new BorderLayout()) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setPaint(new GradientPaint(0, 0, navyHeader1, getWidth(), 0, navyHeader2));
+                g2.fillRect(0, 0, getWidth(), getHeight());
+                g2.dispose();
+            }
+        };
+        headerBar.setBorder(BorderFactory.createEmptyBorder(16, 24, 16, 24));
+
+        JPanel headerTeks = new JPanel(new GridLayout(2, 1, 0, 2));
+        headerTeks.setOpaque(false);
+        JLabel lblHeader = new JLabel("KOSTIFY DASHBOARD MANAGEMENT");
+        lblHeader.setFont(new Font("Segoe UI", Font.BOLD, 20));
+        lblHeader.setForeground(Color.WHITE);
+        JLabel lblSubHeader = new JLabel("Sistem Manajemen Properti & POS Tagihan Kost");
+        lblSubHeader.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        lblSubHeader.setForeground(new Color(176, 196, 222)); // navy terang lembut
+        headerTeks.add(lblHeader);
+        headerTeks.add(lblSubHeader);
+
+        headerBar.add(headerTeks, BorderLayout.WEST);
+        add(headerBar, BorderLayout.NORTH);
 
         // Membuat Panel Tab (JTabbedPane)
         JTabbedPane tabbedPane = new JTabbedPane();
         
         // Masukkan masing-masing panel menu tab
         tabbedPane.addTab("Manajemen Kamar Kost", buatPanelKost());
-        tabbedPane.addTab("Pendaftaran Penyewa", buatPanelPenyewa());
+        panelPenyewa = new PanelPenyewa();
+        tabbedPane.addTab("Pendaftaran Penyewa", panelPenyewa);
         tabbedPane.addTab("POS Kasir & Transaksi", buatPanelTransaksi());
 
         add(tabbedPane, BorderLayout.CENTER);
@@ -59,10 +86,10 @@ public class MainFrame extends JFrame {
 
     // TAB 1: PANEL MANAJEMEN KOST
     private JPanel buatPanelKost() {
-        // Palet warna khusus panel Kost
-        final Color indigo = new Color(63, 81, 181);
-        final Color merah = new Color(212, 83, 126);
-        final Color bgHalaman = new Color(244, 245, 249);
+        // Palet warna khusus panel Kost (tema navy profesional)
+        final Color indigo = new Color(18, 45, 86);        // navy utama (#122D56)
+        final Color merah = new Color(193, 64, 84);        // merah elegan untuk tombol hapus
+        final Color bgHalaman = new Color(241, 244, 249);  // abu kebiruan lembut
         final String fontUtama = "Segoe UI";
 
         JPanel panel = new JPanel(new BorderLayout(0, 12));
@@ -76,9 +103,9 @@ public class MainFrame extends JFrame {
         panelAtas.add(buatHeaderBar(fontUtama, indigo), BorderLayout.NORTH);
 
         // Kartu statistik (dihitung otomatis dari data Kost)
-        lblTotalKamar = buatLabelAngka(new Color(28, 31, 46), fontUtama);
-        lblTerisi = buatLabelAngka(new Color(29, 158, 117), fontUtama);
-        lblKosong = buatLabelAngka(new Color(212, 83, 126), fontUtama);
+        lblTotalKamar = buatLabelAngka(new Color(24, 31, 46), fontUtama);
+        lblTerisi = buatLabelAngka(new Color(22, 138, 102), fontUtama);
+        lblKosong = buatLabelAngka(new Color(193, 64, 84), fontUtama);
         lblHunian = buatLabelAngka(indigo, fontUtama);
 
         JPanel panelStat = new JPanel(new GridLayout(1, 4, 10, 0));
@@ -98,8 +125,8 @@ public class MainFrame extends JFrame {
 
         tabelKost.setRowHeight(30);
         tabelKost.setFont(new Font(fontUtama, Font.PLAIN, 13));
-        tabelKost.setSelectionBackground(new Color(232, 234, 251));
-        tabelKost.setSelectionForeground(new Color(28, 31, 46));
+        tabelKost.setSelectionBackground(new Color(214, 226, 242));
+        tabelKost.setSelectionForeground(new Color(24, 31, 46));
         tabelKost.setShowVerticalLines(false);
         tabelKost.setGridColor(new Color(237, 238, 243));
 
@@ -319,7 +346,7 @@ public class MainFrame extends JFrame {
 
     // Header bar gradien dengan badge "K" + judul (di dalam panel Kost)
     private JPanel buatHeaderBar(String fontUtama, Color indigo) {
-        final Color indigo2 = new Color(124, 110, 230);
+        final Color indigo2 = new Color(32, 67, 124);
         JPanel bar = new JPanel() {
             @Override
             protected void paintComponent(Graphics g) {
@@ -358,7 +385,7 @@ public class MainFrame extends JFrame {
         judul.setForeground(Color.WHITE);
         JLabel sub = new JLabel("Kelola data kamar kost: tambah, lihat, dan hapus.");
         sub.setFont(new Font(fontUtama, Font.PLAIN, 12));
-        sub.setForeground(new Color(223, 225, 248));
+        sub.setForeground(new Color(186, 203, 226));
         teks.add(judul);
         teks.add(sub);
 
@@ -409,8 +436,8 @@ public class MainFrame extends JFrame {
                 lbl.setBorder(BorderFactory.createEmptyBorder(5, 9, 5, 9));
                 lbl.setFont(new Font(fontUtama, Font.PLAIN, 13));
                 if (isSelected) {
-                    lbl.setBackground(new Color(232, 234, 251));
-                    lbl.setForeground(new Color(40, 42, 55));
+                    lbl.setBackground(new Color(214, 226, 242));
+                    lbl.setForeground(new Color(24, 31, 46));
                 }
                 return lbl;
             }
@@ -431,54 +458,6 @@ public class MainFrame extends JFrame {
         lblTerisi.setText(String.valueOf(totalTerisi));
         lblKosong.setText(String.valueOf(kosong));
         lblHunian.setText(persen + "%");
-    }
-
-    // TAB 2: PANEL PENDAFTARAN PENYEWA
-    private JPanel buatPanelPenyewa() {
-        JPanel panel = new JPanel(new BorderLayout());
-
-        // Setup Tabel Penyewa
-        String[] kolom = {"ID Penyewa", "Nama Penyewa", "No. KTP", "ID Tempat Kost"};
-        modelPenyewa = new DefaultTableModel(kolom, 0);
-        tabelPenyewa = new JTable(modelPenyewa);
-        panel.add(new JScrollPane(tabelPenyewa), BorderLayout.CENTER);
-
-        // Panel Formulir Input Penyewa
-        JPanel panelAksi = new JPanel(new FlowLayout());
-        JTextField txtNama = new JTextField(12);
-        JTextField txtKtp = new JTextField(12);
-        JTextField txtIdKost = new JTextField(5);
-        JButton btnDaftar = new JButton("Daftarkan Penyewa");
-
-        panelAksi.add(new JLabel("Nama Penyewa:")); panelAksi.add(txtNama);
-        panelAksi.add(new JLabel("No. KTP:")); panelAksi.add(txtKtp);
-        panelAksi.add(new JLabel("ID Kost Tujuan:")); panelAksi.add(txtIdKost);
-        panelAksi.add(btnDaftar);
-        panel.add(panelAksi, BorderLayout.SOUTH);
-
-        // Event Listener Pendaftaran Penyewa dengan Custom Exception Handling 
-        btnDaftar.addActionListener(e -> {
-            try {
-                String nama = txtNama.getText().trim();
-                String ktp = txtKtp.getText().trim();
-                int idKost = Integer.parseInt(txtIdKost.getText().trim());
-
-                if (controller.tambahPenyewa(nama, ktp, idKost)) {
-                    JOptionPane.showMessageDialog(this, "Penyewa berhasil didaftarkan ke kamar!");
-                    refreshSemuaTabel();
-                    txtNama.setText(""); txtKtp.setText(""); txtIdKost.setText("");
-                } else {
-                    JOptionPane.showMessageDialog(this, "Gagal mendaftar. ID Kost tidak ditemukan.", "Error", JOptionPane.ERROR_MESSAGE);
-                }
-            } catch (KamarPenuhException ex) {
-                // Menangkap Custom Exception Kamar Penuh 
-                JOptionPane.showMessageDialog(this, ex.getMessage(), "Kamar Penuh", JOptionPane.WARNING_MESSAGE);
-            } catch (NumberFormatException ex) {
-                JOptionPane.showMessageDialog(this, "ID Kost harus berupa angka integer!", "Input Error", JOptionPane.ERROR_MESSAGE);
-            }
-        });
-
-        return panel;
     }
 
 
@@ -545,11 +524,9 @@ public class MainFrame extends JFrame {
             modelKost.addRow(new Object[]{k.getIdKost(), k.getNamaKost(), k.getTipeKost(), k.getHargaDasar(), k.getKapasitas(), k.getTerisi()});
         }
 
-        // Refresh Tabel Penyewa
-        modelPenyewa.setRowCount(0);
-        List<Penyewa> listPenyewa = controller.getAllPenyewa();
-        for (Penyewa p : listPenyewa) {
-            modelPenyewa.addRow(new Object[]{p.getIdPenyewa(), p.getNamaPenyewa(), p.getNomorKtp(), p.getIdKost()});
+        // Refresh Tabel Penyewa (didelegasikan ke PanelPenyewa milik Nadia)
+        if (panelPenyewa != null) {
+            panelPenyewa.muatDataPenyewa();
         }
 
         // Refresh Tabel Transaksi
