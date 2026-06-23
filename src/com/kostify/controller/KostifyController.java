@@ -11,7 +11,7 @@ import java.util.List;
 public class KostifyController {
 
     // OPERASI CRUD: TABEL KOST
-    // Select semua data Kost dari database
+        // Select semua data Kost dari database
     public List<Kost> getAllKost() {
         List<Kost> listKost = new ArrayList<>();
         String sql = "SELECT * FROM kost";
@@ -75,7 +75,7 @@ public class KostifyController {
     }
 
     // OPERASI CRUD: TABEL PENYEWA
-    // Mengambil semua data Penyewa dan nama kost tempat mereka tinggal
+    // Mengambil semua data Penyewa dan nama kost tempat mereka tinggal (SELECT)
     public List<Penyewa> getAllPenyewa() {
         List<Penyewa> listPenyewa = new ArrayList<>();
         String sql = "SELECT * FROM penyewa";
@@ -98,7 +98,7 @@ public class KostifyController {
         return listPenyewa;
     }
 
-    // Mendaftarkan Penyewa baru (INSERT dengan validasi kamar penuh)
+    // Mendaftarkan Penyewa baru (INSERT)
     public boolean tambahPenyewa(String nama, String ktp, int idKost) throws KamarPenuhException {
         // Ambil data kost yang dipilih untuk dicek kapasitasnya
         Kost kostTerpilih = getKostById(idKost);
@@ -201,7 +201,6 @@ public class KostifyController {
                     rs.getDate("tanggal_bayar").toLocalDate(),
                     0 // Biaya dasar dilewati karena akan dihitung dibawah
                 );
-                // Timpa dengan nilai riil yang tersimpan di database agar konsisten
                 t.setJumlahHariTelat(rs.getInt("jumlah_hari_telat"));
                 t.setDenda(rs.getDouble("denda"));
                 t.setTotalBayar(rs.getDouble("total_bayar"));
@@ -214,7 +213,7 @@ public class KostifyController {
     }
 
     
-    // HELPER METHOD (INTERNAL UTILITY)
+    // HELPER METHOD
     public Kost getKostById(int idKost) {
         String sql = "SELECT * FROM kost WHERE id_kost = ?";
         try (Connection conn = DatabaseConnection.getConnection();
