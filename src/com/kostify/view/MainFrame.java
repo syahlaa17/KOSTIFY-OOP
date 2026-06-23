@@ -1,21 +1,19 @@
 package com.kostify.view;
 
 import com.kostify.controller.KostifyController;
-import com.kostify.model.KamarPenuhException;
 import com.kostify.model.Kost;
 import com.kostify.model.Penyewa;
 import com.kostify.model.Transaksi;
-
-import javax.swing.*;
-import javax.swing.plaf.basic.BasicComboBoxUI;
-import javax.swing.table.DefaultTableCellRenderer;
-import javax.swing.table.DefaultTableModel;
-import javax.swing.table.JTableHeader;
 import java.awt.*;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.time.LocalDate;
 import java.util.List;
+import javax.swing.*;
+import javax.swing.plaf.basic.BasicComboBoxUI;
+import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.table.DefaultTableModel;
+import javax.swing.table.JTableHeader;
 
 public class MainFrame extends JFrame {
     private KostifyController controller;
@@ -75,6 +73,7 @@ public class MainFrame extends JFrame {
         
         // Masukkan masing-masing panel menu tab
         tabbedPane.addTab("Manajemen Kamar Kost", buatPanelKost());
+        tabbedPane.addTab("Penyewa", new PanelPenyewa());
         panelPenyewa = new PanelPenyewa();
         tabbedPane.addTab("Pendaftaran Penyewa", panelPenyewa);
         tabbedPane.addTab("POS Kasir & Transaksi", buatPanelTransaksi());
