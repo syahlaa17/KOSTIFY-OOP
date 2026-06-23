@@ -3,6 +3,7 @@ package com.kostify.view;
 import com.kostify.controller.KostifyController;
 import com.kostify.model.KamarPenuhException;
 import com.kostify.model.Kost;
+import com.kostify.model.Penyewa;
 import com.kostify.model.Transaksi;
 
 import javax.swing.*;
@@ -77,6 +78,7 @@ public class MainFrame extends JFrame {
         panelPenyewa = new PanelPenyewa();
         tabbedPane.addTab("Pendaftaran Penyewa", panelPenyewa);
         tabbedPane.addTab("POS Kasir & Transaksi", buatPanelTransaksi());
+        tabbedPane.addTab("Laporan Ringkasan", new LaporanRingkasan());
 
         add(tabbedPane, BorderLayout.CENTER);
 
@@ -541,5 +543,144 @@ public class MainFrame extends JFrame {
 
         // Perbarui kartu statistik panel Kost
         updateStatistikKost();
+    }
+
+    // =====================================================================
+    //  INNER CLASS: LaporanRingkasan
+    //  Tugas Zaidan (Integrasi & Dashboard).
+    //  Menampilkan ringkasan data dari SEMUA fitur (Kost, Penyewa, Transaksi)
+    //  dengan cara mengambil list dari controller lalu menjumlahkannya.
+    //
+    //  Disebut "inner class" karena didefinisikan DI DALAM kelas MainFrame.
+    //  Keuntungannya: bisa langsung mengakses 'controller' milik MainFrame
+    //  tanpa harus membuat objek controller baru.
+    // =====================================================================
+    private class LaporanRingkasan extends JPanel {
+
+        // Label angka yang akan diisi hasil perhitungan
+        private JLabel lblTotalKamar, lblTotalPenyewa, lblTotalPemasukan, lblTotalDenda;
+
+        public LaporanRingkasan() {
+            // ---- Pengaturan dasar panel ----
+            setLayout(new BorderLayout());
+            setBackground(new Color(241, 244, 249));
+            setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+
+            // ---- Header navy (senada dengan tab lain) ----
+            JPanel header = new JPanel(new BorderLayout()) {
+                @Override
+                protected void paintComponent(Graphics g) {
+                    super.paintComponent(g);
+                    Graphics2D g2 = (Graphics2D) g.create();
+                    g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                    g2.setPaint(new GradientPaint(0, 0, new Color(18, 45, 86),
+                                                  getWidth(), 0, new Color(32, 67, 124)));
+                    g2.fillRoundRect(0, 0, getWidth(), getHeight(), 18, 18);
+                    g2.dispose();
+                }
+            };
+            header.setOpaque(false);
+            header.setBorder(BorderFactory.createEmptyBorder(16, 20, 16, 20));
+            JLabel judul = new JLabel("Laporan Ringkasan");
+            judul.setFont(new Font("Segoe UI", Font.BOLD, 17));
+            judul.setForeground(Color.WHITE);
+            JLabel sub = new JLabel("Rangkuman data kost, penyewa, dan transaksi");
+            sub.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+            sub.setForeground(new Color(186, 203, 226));
+            JPanel teksHeader = new JPanel(new GridLayout(2, 1, 0, 2));
+            teksHeader.setOpaque(false);
+            teksHeader.add(judul);
+            teksHeader.add(sub);
+            header.add(teksHeader, BorderLayout.WEST);
+            add(header, BorderLayout.NORTH);
+
+            // ---- Grid 4 kartu ringkasan ----
+            JPanel grid = new JPanel(new GridLayout(2, 2, 16, 16));
+            grid.setOpaque(false);
+            grid.setBorder(BorderFactory.createEmptyBorder(20, 0, 20, 0));
+
+            lblTotalKamar    = new JLabel("0");
+            lblTotalPenyewa  = new JLabel("0");
+            lblTotalPemasukan = new JLabel("Rp 0");
+            lblTotalDenda    = new JLabel("Rp 0");
+
+            grid.add(buatKartu("Total Kapasitas Kamar", lblTotalKamar, new Color(24, 31, 46)));
+            grid.add(buatKartu("Total Penyewa Aktif", lblTotalPenyewa, new Color(22, 138, 102)));
+            grid.add(buatKartu("Total Pemasukan", lblTotalPemasukan, new Color(18, 45, 86)));
+            grid.add(buatKartu("Total Denda Terkumpul", lblTotalDenda, new Color(193, 64, 84)));
+
+            add(grid, BorderLayout.CENTER);
+
+            // ---- Tombol refresh di bawah ----
+            JButton btnRefresh = new JButton("Muat Ulang Laporan");
+            btnRefresh.setFont(new Font("Segoe UI", Font.BOLD, 12));
+            btnRefresh.setBackground(new Color(18, 45, 86));
+            btnRefresh.setForeground(Color.WHITE);
+            btnRefresh.setFocusPainted(false);
+            btnRefresh.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
+            btnRefresh.addActionListener(e -> hitungLaporan());
+            JPanel bawah = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+            bawah.setOpaque(false);
+            bawah.add(btnRefresh);
+            add(bawah, BorderLayout.SOUTH);
+
+            // Hitung pertama kali saat panel dibuka
+            hitungLaporan();
+        }
+
+        // ------------------------------------------------------------------
+        //  INTI LAPORAN: mengambil data dari controller lalu menjumlahkan.
+        //  Pola tiap angka sama: ambil list -> loop -> akumulasi.
+        // ------------------------------------------------------------------
+        private void hitungLaporan() {
+            // 1) TOTAL KAPASITAS KAMAR — dari fitur Kost (Maulina)
+            int totalKamar = 0;
+            for (Kost k : controller.getAllKost()) {
+                totalKamar += k.getKapasitas();
+            }
+
+            // 2) TOTAL PENYEWA AKTIF — dari fitur Penyewa (Nadia)
+            List<Penyewa> daftarPenyewa = controller.getAllPenyewa();
+            int totalPenyewa = daftarPenyewa.size();
+
+            // 3) TOTAL PEMASUKAN & 4) TOTAL DENDA — dari fitur Transaksi (Aul)
+            double totalPemasukan = 0;
+            double totalDenda = 0;
+            for (Transaksi t : controller.getAllTransaksi()) {
+                totalPemasukan += t.getTotalBayar();
+                totalDenda += t.getDenda();
+            }
+
+            // Format angka uang biar rapi: Rp 1.300.000
+            DecimalFormatSymbols simbol = new DecimalFormatSymbols();
+            simbol.setGroupingSeparator('.');
+            DecimalFormat format = new DecimalFormat("#,###", simbol);
+
+            // Tampilkan hasil ke label
+            lblTotalKamar.setText(String.valueOf(totalKamar));
+            lblTotalPenyewa.setText(String.valueOf(totalPenyewa));
+            lblTotalPemasukan.setText("Rp " + format.format(totalPemasukan));
+            lblTotalDenda.setText("Rp " + format.format(totalDenda));
+        }
+
+        // Helper: membuat satu kartu putih berisi judul kecil + angka besar
+        private JPanel buatKartu(String judulKartu, JLabel labelAngka, Color warnaAngka) {
+            JPanel kartu = new JPanel(new BorderLayout(0, 8));
+            kartu.setBackground(Color.WHITE);
+            kartu.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createLineBorder(new Color(230, 232, 239)),
+                    BorderFactory.createEmptyBorder(18, 20, 18, 20)));
+
+            JLabel jdl = new JLabel(judulKartu);
+            jdl.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+            jdl.setForeground(new Color(138, 141, 155));
+
+            labelAngka.setFont(new Font("Segoe UI", Font.BOLD, 26));
+            labelAngka.setForeground(warnaAngka);
+
+            kartu.add(jdl, BorderLayout.NORTH);
+            kartu.add(labelAngka, BorderLayout.CENTER);
+            return kartu;
+        }
     }
 }
