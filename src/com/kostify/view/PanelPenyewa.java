@@ -4,13 +4,22 @@ import com.kostify.controller.KostifyController;
 import com.kostify.model.KamarPenuhException;
 import com.kostify.model.Kost;
 import com.kostify.model.Penyewa;
-
-import javax.swing.*;
-import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.util.List;
+import javax.swing.*;
+import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.table.DefaultTableModel;
+import javax.swing.table.JTableHeader;
 
 public class PanelPenyewa extends JPanel {
+
+    // ── Warna tema (sama dengan panel Kost) ─────────────────────
+    private static final Color DARK_BLUE   = new Color(18, 45, 85);
+    private static final Color ACCENT_RED  = new Color(180, 40, 60);
+    private static final Color WHITE       = Color.WHITE;
+    private static final Color LIGHT_GRAY  = new Color(245, 245, 245);
+    private static final Color TEXT_GRAY   = new Color(100, 100, 100);
+    private static final Color TABLE_HEADER = new Color(30, 55, 100);
 
     // ── Controller ──────────────────────────────────────────────
     private final KostifyController controller = new KostifyController();
@@ -18,12 +27,16 @@ public class PanelPenyewa extends JPanel {
     // ── Komponen Form Input ──────────────────────────────────────
     private JTextField txtNama;
     private JTextField txtKtp;
-    private JComboBox<String> cmbKost;   // menampilkan nama kost
-    private List<Kost> listKost;         // data kost untuk mapping nama → id
+    private JComboBox<String> cmbKost;
+    private List<Kost> listKost;
 
     // ── Tabel ────────────────────────────────────────────────────
     private JTable tabelPenyewa;
     private DefaultTableModel modelTabel;
+
+    // ── Kartu statistik ─────────────────────────────────────────
+    private JLabel lblTotalPenyewa;
+    private JLabel lblTotalKost;
 
     // ── Tombol ───────────────────────────────────────────────────
     private JButton btnTambah;
@@ -31,19 +44,31 @@ public class PanelPenyewa extends JPanel {
     private JButton btnHapus;
     private JButton btnBersihkan;
 
-    // ── State: baris yang sedang dipilih ─────────────────────────
+    // ── State ────────────────────────────────────────────────────
     private int idPenyewaTerpilih = -1;
 
     // ════════════════════════════════════════════════════════════
     //  CONSTRUCTOR
     // ════════════════════════════════════════════════════════════
     public PanelPenyewa() {
-        setLayout(new BorderLayout(10, 10));
-        setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+        setLayout(new BorderLayout());
+        setBackground(LIGHT_GRAY);
 
-        add(buatPanelJudul(),  BorderLayout.NORTH);
-        add(buatPanelForm(),   BorderLayout.WEST);
-        add(buatPanelTabel(),  BorderLayout.CENTER);
+        // Panel utama dengan padding
+        JPanel mainPanel = new JPanel(new BorderLayout(0, 0));
+        mainPanel.setBackground(LIGHT_GRAY);
+        mainPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+
+        mainPanel.add(buatPanelHeader(), BorderLayout.NORTH);
+
+        JPanel tengah = new JPanel(new BorderLayout(0, 15));
+        tengah.setBackground(LIGHT_GRAY);
+        tengah.add(buatPanelStats(), BorderLayout.NORTH);
+        tengah.add(buatPanelTabel(), BorderLayout.CENTER);
+        tengah.add(buatPanelForm(),  BorderLayout.SOUTH);
+        mainPanel.add(tengah, BorderLayout.CENTER);
+
+        add(mainPanel, BorderLayout.CENTER);
 
         muatDataKostKeComboBox();
         muatDataPenyewa();
@@ -53,99 +78,97 @@ public class PanelPenyewa extends JPanel {
     //  BUILDER PANEL
     // ════════════════════════════════════════════════════════════
 
-    /** Panel judul di bagian atas */
-    private JPanel buatPanelJudul() {
-        JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        JLabel label = new JLabel("Manajemen Data Penyewa");
-        label.setFont(new Font("SansSerif", Font.BOLD, 18));
-        panel.add(label);
+    /** Header gelap dengan ikon P dan judul */
+    private JPanel buatPanelHeader() {
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBackground(DARK_BLUE);
+        panel.setBorder(BorderFactory.createEmptyBorder(20, 25, 20, 25));
+
+        JPanel kiri = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 0));
+        kiri.setBackground(DARK_BLUE);
+
+        // Ikon kotak dengan huruf P
+        JLabel ikon = new JLabel("P") {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g;
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(new Color(255, 255, 255, 40));
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 8, 8);
+                g2.setColor(WHITE);
+                g2.setFont(new Font("SansSerif", Font.BOLD, 22));
+                FontMetrics fm = g2.getFontMetrics();
+                int x = (getWidth() - fm.stringWidth("P")) / 2;
+                int y = (getHeight() + fm.getAscent() - fm.getDescent()) / 2;
+                g2.drawString("P", x, y);
+            }
+        };
+        ikon.setPreferredSize(new Dimension(50, 50));
+
+        JPanel teksPanel = new JPanel(new GridLayout(2, 1, 0, 2));
+        teksPanel.setBackground(DARK_BLUE);
+
+        JLabel judul = new JLabel("Manajemen Data Penyewa");
+        judul.setFont(new Font("SansSerif", Font.BOLD, 20));
+        judul.setForeground(WHITE);
+
+        JLabel sub = new JLabel("Kelola data penyewa kost: tambah, lihat, edit, dan hapus.");
+        sub.setFont(new Font("SansSerif", Font.PLAIN, 12));
+        sub.setForeground(new Color(180, 200, 220));
+
+        teksPanel.add(judul);
+        teksPanel.add(sub);
+
+        kiri.add(ikon);
+        kiri.add(teksPanel);
+        panel.add(kiri, BorderLayout.CENTER);
+
+        // Padding bawah
+        panel.setBorder(BorderFactory.createEmptyBorder(18, 25, 18, 25));
         return panel;
     }
 
-    /** Panel form input + tombol di sebelah kiri */
-    private JPanel buatPanelForm() {
-        JPanel panel = new JPanel(new GridBagLayout());
-        panel.setBorder(BorderFactory.createTitledBorder("Form Penyewa"));
-        panel.setPreferredSize(new Dimension(280, 0));
+    /** Kartu statistik: Total Penyewa & Total Kost Tersedia */
+    private JPanel buatPanelStats() {
+        JPanel panel = new JPanel(new GridLayout(1, 2, 15, 0));
+        panel.setBackground(LIGHT_GRAY);
+        panel.setBorder(BorderFactory.createEmptyBorder(15, 0, 5, 0));
 
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets  = new Insets(6, 8, 6, 8);
-        gbc.fill    = GridBagConstraints.HORIZONTAL;
-        gbc.anchor  = GridBagConstraints.WEST;
+        lblTotalPenyewa = new JLabel("0");
+        lblTotalKost    = new JLabel("0");
 
-        // ── Baris 0: Nama Penyewa ──
-        gbc.gridx = 0; gbc.gridy = 0; gbc.gridwidth = 2;
-        panel.add(new JLabel("Nama Penyewa:"), gbc);
-
-        gbc.gridy = 1;
-        txtNama = new JTextField(18);
-        panel.add(txtNama, gbc);
-
-        // ── Baris 2: Nomor KTP ──
-        gbc.gridy = 2;
-        panel.add(new JLabel("Nomor KTP (16 digit):"), gbc);
-
-        gbc.gridy = 3;
-        txtKtp = new JTextField(18);
-        panel.add(txtKtp, gbc);
-
-        // ── Baris 4: Pilih Kost ──
-        gbc.gridy = 4;
-        panel.add(new JLabel("Pilih Kost:"), gbc);
-
-        gbc.gridy = 5;
-        cmbKost = new JComboBox<>();
-        panel.add(cmbKost, gbc);
-
-        // ── Separator ──
-        gbc.gridy = 6;
-        panel.add(new JSeparator(), gbc);
-
-        // ── Baris 7-10: Tombol ──
-        gbc.gridwidth = 1;
-        gbc.weightx   = 0.5;
-
-        btnTambah = new JButton("Tambah");
-        btnTambah.setBackground(new Color(46, 139, 87));
-        btnTambah.setForeground(Color.WHITE);
-        btnTambah.setFocusPainted(false);
-        gbc.gridx = 0; gbc.gridy = 7;
-        panel.add(btnTambah, gbc);
-
-        btnUpdate = new JButton("Update");
-        btnUpdate.setBackground(new Color(30, 144, 255));
-        btnUpdate.setForeground(Color.WHITE);
-        btnUpdate.setFocusPainted(false);
-        btnUpdate.setEnabled(false);
-        gbc.gridx = 1;
-        panel.add(btnUpdate, gbc);
-
-        btnHapus = new JButton("Hapus");
-        btnHapus.setBackground(new Color(220, 53, 69));
-        btnHapus.setForeground(Color.WHITE);
-        btnHapus.setFocusPainted(false);
-        btnHapus.setEnabled(false);
-        gbc.gridx = 0; gbc.gridy = 8;
-        panel.add(btnHapus, gbc);
-
-        btnBersihkan = new JButton("Bersihkan");
-        btnBersihkan.setFocusPainted(false);
-        gbc.gridx = 1;
-        panel.add(btnBersihkan, gbc);
-
-        // ── Daftarkan action listener ──
-        btnTambah.addActionListener(e -> tambahPenyewa());
-        btnUpdate.addActionListener(e -> updatePenyewa());
-        btnHapus.addActionListener(e -> hapusPenyewa());
-        btnBersihkan.addActionListener(e -> bersihkanForm());
+        panel.add(buatKartuStat("Total Penyewa", lblTotalPenyewa, new Color(46, 139, 87)));
+        panel.add(buatKartuStat("Kost Tersedia", lblTotalKost,    new Color(30, 100, 200)));
 
         return panel;
     }
 
-    /** Panel tabel di tengah/kanan */
+    /** Helper: buat satu kartu statistik */
+    private JPanel buatKartuStat(String label, JLabel nilaiLabel, Color warnaAngka) {
+        JPanel kartu = new JPanel(new GridLayout(2, 1, 0, 4));
+        kartu.setBackground(WHITE);
+        kartu.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(new Color(220, 220, 220), 1),
+            BorderFactory.createEmptyBorder(12, 18, 12, 18)
+        ));
+
+        JLabel lbl = new JLabel(label);
+        lbl.setFont(new Font("SansSerif", Font.PLAIN, 12));
+        lbl.setForeground(TEXT_GRAY);
+
+        nilaiLabel.setFont(new Font("SansSerif", Font.BOLD, 28));
+        nilaiLabel.setForeground(warnaAngka);
+
+        kartu.add(lbl);
+        kartu.add(nilaiLabel);
+        return kartu;
+    }
+
+    /** Tabel daftar penyewa dengan header gelap */
     private JPanel buatPanelTabel() {
-        JPanel panel = new JPanel(new BorderLayout(5, 5));
-        panel.setBorder(BorderFactory.createTitledBorder("Daftar Penyewa"));
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBackground(WHITE);
+        panel.setBorder(BorderFactory.createLineBorder(new Color(220, 220, 220), 1));
 
         // ── Definisi kolom ──
         String[] kolom = {"ID", "Nama Penyewa", "Nomor KTP", "Nama Kost"};
@@ -156,48 +179,178 @@ public class PanelPenyewa extends JPanel {
 
         tabelPenyewa = new JTable(modelTabel);
         tabelPenyewa.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        tabelPenyewa.setRowHeight(26);
-        tabelPenyewa.getTableHeader().setFont(new Font("SansSerif", Font.BOLD, 12));
+        tabelPenyewa.setRowHeight(30);
+        tabelPenyewa.setFont(new Font("SansSerif", Font.PLAIN, 13));
+        tabelPenyewa.setGridColor(new Color(235, 235, 235));
+        tabelPenyewa.setSelectionBackground(new Color(210, 230, 255));
+        tabelPenyewa.setBackground(WHITE);
+        tabelPenyewa.setShowHorizontalLines(true);
+        tabelPenyewa.setShowVerticalLines(false);
 
-        // ── Sembunyikan kolom ID (tetap ada untuk referensi) ──
+        // Header gelap
+        JTableHeader header = tabelPenyewa.getTableHeader();
+        header.setBackground(TABLE_HEADER);
+        header.setForeground(WHITE);
+        header.setFont(new Font("SansSerif", Font.BOLD, 13));
+        header.setPreferredSize(new Dimension(0, 38));
+        header.setDefaultRenderer(new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable t, Object v,
+                    boolean sel, boolean foc, int r, int c) {
+                super.getTableCellRendererComponent(t, v, sel, foc, r, c);
+                setBackground(TABLE_HEADER);
+                setForeground(WHITE);
+                setFont(new Font("SansSerif", Font.BOLD, 13));
+                setHorizontalAlignment(CENTER);
+                setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 8));
+                return this;
+            }
+        });
+
+        // Sembunyikan kolom ID
         tabelPenyewa.getColumnModel().getColumn(0).setMinWidth(0);
         tabelPenyewa.getColumnModel().getColumn(0).setMaxWidth(0);
         tabelPenyewa.getColumnModel().getColumn(0).setWidth(0);
 
-        // ── Listener: klik baris → isi form ──
+        // Listener klik baris
         tabelPenyewa.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) isiFormDariBaris();
         });
 
         JScrollPane scroll = new JScrollPane(tabelPenyewa);
+        scroll.setBorder(BorderFactory.createEmptyBorder());
         panel.add(scroll, BorderLayout.CENTER);
 
-        // ── Tombol refresh ──
-        JButton btnRefresh = new JButton("↻ Refresh");
-        btnRefresh.addActionListener(e -> muatDataPenyewa());
-        JPanel panelBawah = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        panelBawah.add(btnRefresh);
-        panel.add(panelBawah, BorderLayout.SOUTH);
-
         return panel;
+    }
+
+    /** Form tambah/edit di bawah tabel */
+    private JPanel buatPanelForm() {
+        JPanel wrapper = new JPanel(new BorderLayout());
+        wrapper.setBackground(WHITE);
+        wrapper.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(new Color(220, 220, 220), 1),
+            BorderFactory.createEmptyBorder(18, 20, 18, 20)
+        ));
+
+        // Judul form
+        JLabel judulForm = new JLabel("Tambah / Edit Penyewa");
+        judulForm.setFont(new Font("SansSerif", Font.BOLD, 14));
+        judulForm.setForeground(DARK_BLUE);
+        judulForm.setBorder(BorderFactory.createEmptyBorder(0, 0, 12, 0));
+        wrapper.add(judulForm, BorderLayout.NORTH);
+
+        // Grid field
+        JPanel grid = new JPanel(new GridBagLayout());
+        grid.setBackground(WHITE);
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(5, 8, 5, 8);
+        gbc.fill   = GridBagConstraints.HORIZONTAL;
+        gbc.anchor = GridBagConstraints.WEST;
+
+        Font labelFont = new Font("SansSerif", Font.PLAIN, 12);
+        Font fieldFont = new Font("SansSerif", Font.PLAIN, 13);
+
+        // Nama
+        gbc.gridx = 0; gbc.gridy = 0; gbc.weightx = 0;
+        JLabel lNama = new JLabel("Nama:");
+        lNama.setFont(labelFont);
+        grid.add(lNama, gbc);
+
+        gbc.gridx = 1; gbc.weightx = 1.0;
+        txtNama = new JTextField(20);
+        txtNama.setFont(fieldFont);
+        txtNama.setPreferredSize(new Dimension(200, 30));
+        grid.add(txtNama, gbc);
+
+        // KTP
+        gbc.gridx = 2; gbc.weightx = 0;
+        JLabel lKtp = new JLabel("Nomor KTP:");
+        lKtp.setFont(labelFont);
+        grid.add(lKtp, gbc);
+
+        gbc.gridx = 3; gbc.weightx = 1.0;
+        txtKtp = new JTextField(20);
+        txtKtp.setFont(fieldFont);
+        txtKtp.setPreferredSize(new Dimension(200, 30));
+        grid.add(txtKtp, gbc);
+
+        // Kost
+        gbc.gridx = 4; gbc.weightx = 0;
+        JLabel lKost = new JLabel("Kost:");
+        lKost.setFont(labelFont);
+        grid.add(lKost, gbc);
+
+        gbc.gridx = 5; gbc.weightx = 1.0;
+        cmbKost = new JComboBox<>();
+        cmbKost.setFont(fieldFont);
+        cmbKost.setPreferredSize(new Dimension(180, 30));
+        grid.add(cmbKost, gbc);
+
+        wrapper.add(grid, BorderLayout.CENTER);
+
+        // Tombol
+        JPanel panelTombol = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        panelTombol.setBackground(WHITE);
+        panelTombol.setBorder(BorderFactory.createEmptyBorder(12, 0, 0, 0));
+
+        btnBersihkan = buatTombol("Bersihkan", new Color(150, 150, 150));
+        btnUpdate    = buatTombol("Update Terpilih", new Color(30, 100, 200));
+        btnHapus     = buatTombol("Hapus Terpilih", ACCENT_RED);
+        btnTambah    = buatTombol("Tambah Penyewa", new Color(18, 45, 85));
+
+        btnUpdate.setForeground(Color.WHITE);
+        btnUpdate.setOpaque(true);
+        btnHapus.setForeground(Color.WHITE);
+        btnHapus.setOpaque(true);
+
+        btnUpdate.setEnabled(false);
+        btnHapus.setEnabled(false);
+
+        panelTombol.add(btnBersihkan);
+        panelTombol.add(btnUpdate);
+        panelTombol.add(btnHapus);
+        panelTombol.add(btnTambah);
+
+        wrapper.add(panelTombol, BorderLayout.SOUTH);
+
+        // Listener
+        btnTambah.addActionListener(e -> tambahPenyewa());
+        btnUpdate.addActionListener(e -> updatePenyewa());
+        btnHapus.addActionListener(e -> hapusPenyewa());
+        btnBersihkan.addActionListener(e -> bersihkanForm());
+
+        return wrapper;
+    }
+
+    /** Helper buat tombol bergaya */
+    private JButton buatTombol(String teks, Color bg) {
+        JButton btn = new JButton(teks);
+        btn.setBackground(bg);
+        btn.setForeground(WHITE);
+        btn.setFont(new Font("SansSerif", Font.BOLD, 12));
+        btn.setFocusPainted(false);
+        btn.setBorderPainted(false);
+        btn.setPreferredSize(new Dimension(150, 34));
+        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        return btn;
     }
 
     // ════════════════════════════════════════════════════════════
     //  LOAD DATA
     // ════════════════════════════════════════════════════════════
 
-    /** Isi ComboBox dengan nama kost dari database */
     private void muatDataKostKeComboBox() {
         listKost = controller.getAllKost();
         cmbKost.removeAllItems();
         for (Kost k : listKost) {
             cmbKost.addItem(k.getNamaKost());
         }
+        lblTotalKost.setText(String.valueOf(listKost.size()));
     }
 
-    /** Muat ulang seluruh data penyewa ke tabel */
     public void muatDataPenyewa() {
-        modelTabel.setRowCount(0); // kosongkan tabel
+        modelTabel.setRowCount(0);
         List<Penyewa> listPenyewa = controller.getAllPenyewa();
 
         for (Penyewa p : listPenyewa) {
@@ -209,16 +362,15 @@ public class PanelPenyewa extends JPanel {
                 namaKost
             });
         }
+        lblTotalPenyewa.setText(String.valueOf(listPenyewa.size()));
     }
 
     // ════════════════════════════════════════════════════════════
     //  EVENT HANDLER
     // ════════════════════════════════════════════════════════════
 
-    /** Tambah penyewa baru ke database */
     private void tambahPenyewa() {
         if (!validasiForm()) return;
-
         String nama = txtNama.getText().trim();
         String ktp  = txtKtp.getText().trim();
         int idKost  = getIdKostDariComboBox();
@@ -227,25 +379,20 @@ public class PanelPenyewa extends JPanel {
             boolean berhasil = controller.tambahPenyewa(nama, ktp, idKost);
             if (berhasil) {
                 JOptionPane.showMessageDialog(this,
-                    "Penyewa berhasil didaftarkan!",
-                    "Sukses", JOptionPane.INFORMATION_MESSAGE);
+                    "Penyewa berhasil didaftarkan!", "Sukses", JOptionPane.INFORMATION_MESSAGE);
                 muatDataPenyewa();
-                muatDataKostKeComboBox(); // update sisa kamar di combobox
+                muatDataKostKeComboBox();
                 bersihkanForm();
             } else {
                 JOptionPane.showMessageDialog(this,
-                    "Gagal mendaftarkan penyewa. Coba lagi.",
-                    "Error", JOptionPane.ERROR_MESSAGE);
+                    "Gagal mendaftarkan penyewa. Coba lagi.", "Error", JOptionPane.ERROR_MESSAGE);
             }
         } catch (KamarPenuhException ex) {
-            // Tampilkan pesan KamarPenuhException dengan dialog khusus
             JOptionPane.showMessageDialog(this,
-                ex.getMessage(),
-                "Kamar Penuh!", JOptionPane.WARNING_MESSAGE);
+                ex.getMessage(), "Kamar Penuh!", JOptionPane.WARNING_MESSAGE);
         }
     }
 
-    /** Update data penyewa yang dipilih */
     private void updatePenyewa() {
         if (idPenyewaTerpilih == -1) {
             JOptionPane.showMessageDialog(this, "Pilih penyewa dari tabel terlebih dahulu.");
@@ -253,15 +400,15 @@ public class PanelPenyewa extends JPanel {
         }
         if (!validasiForm()) return;
 
-        String nama = txtNama.getText().trim();
-        String ktp  = txtKtp.getText().trim();
-        int idKost  = getIdKostDariComboBox();
-
-        boolean berhasil = controller.updatePenyewa(idPenyewaTerpilih, nama, ktp, idKost);
+        boolean berhasil = controller.updatePenyewa(
+            idPenyewaTerpilih,
+            txtNama.getText().trim(),
+            txtKtp.getText().trim(),
+            getIdKostDariComboBox()
+        );
         if (berhasil) {
             JOptionPane.showMessageDialog(this,
-                "Data penyewa berhasil diperbarui!",
-                "Sukses", JOptionPane.INFORMATION_MESSAGE);
+                "Data penyewa berhasil diperbarui!", "Sukses", JOptionPane.INFORMATION_MESSAGE);
             muatDataPenyewa();
             bersihkanForm();
         } else {
@@ -270,13 +417,11 @@ public class PanelPenyewa extends JPanel {
         }
     }
 
-    /** Hapus penyewa yang dipilih */
     private void hapusPenyewa() {
         if (idPenyewaTerpilih == -1) {
             JOptionPane.showMessageDialog(this, "Pilih penyewa dari tabel terlebih dahulu.");
             return;
         }
-
         int baris = tabelPenyewa.getSelectedRow();
         String namaPenyewa = (String) modelTabel.getValueAt(baris, 1);
 
@@ -285,12 +430,10 @@ public class PanelPenyewa extends JPanel {
             "Konfirmasi Hapus", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
 
         if (konfirmasi == JOptionPane.YES_OPTION) {
-            int idKost = getIdKostDariComboBox();
-            boolean berhasil = controller.hapusPenyewa(idPenyewaTerpilih, idKost);
+            boolean berhasil = controller.hapusPenyewa(idPenyewaTerpilih, getIdKostDariComboBox());
             if (berhasil) {
                 JOptionPane.showMessageDialog(this,
-                    "Penyewa berhasil dihapus.",
-                    "Sukses", JOptionPane.INFORMATION_MESSAGE);
+                    "Penyewa berhasil dihapus.", "Sukses", JOptionPane.INFORMATION_MESSAGE);
                 muatDataPenyewa();
                 muatDataKostKeComboBox();
                 bersihkanForm();
@@ -301,7 +444,6 @@ public class PanelPenyewa extends JPanel {
         }
     }
 
-    /** Isi form dari baris tabel yang diklik */
     private void isiFormDariBaris() {
         int baris = tabelPenyewa.getSelectedRow();
         if (baris < 0) return;
@@ -309,17 +451,13 @@ public class PanelPenyewa extends JPanel {
         idPenyewaTerpilih = (int) modelTabel.getValueAt(baris, 0);
         txtNama.setText((String) modelTabel.getValueAt(baris, 1));
         txtKtp.setText((String)  modelTabel.getValueAt(baris, 2));
+        cmbKost.setSelectedItem(modelTabel.getValueAt(baris, 3));
 
-        String namaKost = (String) modelTabel.getValueAt(baris, 3);
-        cmbKost.setSelectedItem(namaKost);
-
-        // Aktifkan tombol update & hapus
         btnUpdate.setEnabled(true);
         btnHapus.setEnabled(true);
         btnTambah.setEnabled(false);
     }
 
-    /** Reset form ke kondisi awal */
     private void bersihkanForm() {
         txtNama.setText("");
         txtKtp.setText("");
@@ -335,7 +473,6 @@ public class PanelPenyewa extends JPanel {
     //  HELPER / VALIDASI
     // ════════════════════════════════════════════════════════════
 
-    /** Validasi input form sebelum dikirim ke controller */
     private boolean validasiForm() {
         String nama = txtNama.getText().trim();
         String ktp  = txtKtp.getText().trim();
@@ -346,8 +483,7 @@ public class PanelPenyewa extends JPanel {
             return false;
         }
         if (ktp.isEmpty() || ktp.length() != 16 || !ktp.matches("\\d+")) {
-            JOptionPane.showMessageDialog(this,
-                "Nomor KTP harus 16 digit angka.");
+            JOptionPane.showMessageDialog(this, "Nomor KTP harus 16 digit angka.");
             txtKtp.requestFocus();
             return false;
         }
@@ -358,18 +494,16 @@ public class PanelPenyewa extends JPanel {
         return true;
     }
 
-    /** Ambil id_kost berdasarkan item yang dipilih di ComboBox */
     private int getIdKostDariComboBox() {
         int index = cmbKost.getSelectedIndex();
         if (index < 0 || index >= listKost.size()) return -1;
         return listKost.get(index).getIdKost();
     }
 
-    /** Cari nama kost berdasarkan id (untuk kolom tabel) */
     private String getNamaKostById(int idKost) {
         for (Kost k : listKost) {
             if (k.getIdKost() == idKost) return k.getNamaKost();
         }
-        return "Kost ID " + idKost; // fallback
+        return "Kost ID " + idKost;
     }
 }
