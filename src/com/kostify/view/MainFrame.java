@@ -28,6 +28,12 @@ public class MainFrame extends JFrame {
     // Label kartu statistik panel Kost
     private JLabel lblTotalKamar, lblTerisi, lblKosong, lblHunian;
 
+    // Label kartu statistik panel Transaksi (POS Kasir)
+    private JLabel lblTotalTransaksi, lblTotalPemasukanTrx, lblTotalDendaTrx, lblTransaksiTelat;
+
+    // Callback untuk reload ulang dropdown penyewa di form POS Kasir
+    private Runnable muatDaftarPenyewaTransaksi;
+
     public MainFrame() {
         controller = new KostifyController();
 
@@ -75,7 +81,6 @@ public class MainFrame extends JFrame {
         tabbedPane.addTab("Manajemen Kamar Kost", buatPanelKost());
         tabbedPane.addTab("Penyewa", new PanelPenyewa());
         panelPenyewa = new PanelPenyewa();
-        tabbedPane.addTab("Pendaftaran Penyewa", panelPenyewa);
         tabbedPane.addTab("POS Kasir & Transaksi", buatPanelTransaksi());
         tabbedPane.addTab("Laporan Ringkasan", new LaporanRingkasan());
 
@@ -464,59 +469,381 @@ public class MainFrame extends JFrame {
 
     // TAB 3: PANEL POS KASIR TRANSAKSI
     private JPanel buatPanelTransaksi() {
-        JPanel panel = new JPanel(new BorderLayout());
+        final Color indigo = new Color(18, 45, 86);
+        final Color merah = new Color(193, 64, 84);
+        final Color hijau = new Color(22, 138, 102);
+        final Color bgHalaman = new Color(241, 244, 249);
+        final String fontUtama = "Segoe UI";
 
-        // Setup Tabel Transaksi
-        String[] kolom = {"ID Trx", "ID Penyewa", "ID Kost", "Bulan Tagihan", "Batas Tempo", "Tgl Bayar", "Hari Telat", "Denda", "Total Bayar"};
-        modelTransaksi = new DefaultTableModel(kolom, 0);
+        JPanel panel = new JPanel(new BorderLayout(0, 12));
+        panel.setBackground(bgHalaman);
+        panel.setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 16));
+
+        // Header bar dan Statistik ringkas
+        JPanel panelAtas = new JPanel(new BorderLayout(0, 12));
+        panelAtas.setOpaque(false);
+
+        // Header bar 
+        final Color indigo2 = new Color(32, 67, 124);
+        JPanel headerBar = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setPaint(new GradientPaint(0, 0, indigo, getWidth(), 0, indigo2));
+                g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 18, 18);
+                g2.dispose();
+            }
+        };
+        headerBar.setOpaque(false);
+        headerBar.setLayout(new BorderLayout(12, 0));
+        headerBar.setBorder(BorderFactory.createEmptyBorder(14, 16, 14, 16));
+
+        JLabel badge = new JLabel("T", SwingConstants.CENTER) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(Color.WHITE);
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 12, 12);
+                g2.dispose();
+                super.paintComponent(g);
+            }
+        };
+        badge.setOpaque(false);
+        badge.setPreferredSize(new Dimension(42, 42));
+        badge.setFont(new Font(fontUtama, Font.BOLD, 20));
+        badge.setForeground(indigo);
+
+        JPanel teksHeader = new JPanel(new GridLayout(2, 1));
+        teksHeader.setOpaque(false);
+        JLabel judul = new JLabel("POS Kasir & Transaksi");
+        judul.setFont(new Font(fontUtama, Font.BOLD, 17));
+        judul.setForeground(Color.WHITE);
+        JLabel sub = new JLabel("Proses pembayaran sewa kost dan hitung denda telat otomatis.");
+        sub.setFont(new Font(fontUtama, Font.PLAIN, 12));
+        sub.setForeground(new Color(186, 203, 226));
+        teksHeader.add(judul);
+        teksHeader.add(sub);
+
+        headerBar.add(badge, BorderLayout.WEST);
+        headerBar.add(teksHeader, BorderLayout.CENTER);
+        panelAtas.add(headerBar, BorderLayout.NORTH);
+
+        lblTotalTransaksi = buatLabelAngka(new Color(24, 31, 46), fontUtama);
+        lblTotalPemasukanTrx = buatLabelAngka(hijau, fontUtama);
+        lblTotalDendaTrx = buatLabelAngka(merah, fontUtama);
+        lblTransaksiTelat = buatLabelAngka(indigo, fontUtama);
+
+        JPanel panelStat = new JPanel(new GridLayout(1, 4, 10, 0));
+        panelStat.setOpaque(false);
+        panelStat.add(kartuStatistik("Total Transaksi", lblTotalTransaksi, fontUtama));
+        panelStat.add(kartuStatistik("Total Pemasukan", lblTotalPemasukanTrx, fontUtama));
+        panelStat.add(kartuStatistik("Total Denda Terkumpul", lblTotalDendaTrx, fontUtama));
+        panelStat.add(kartuStatistik("Transaksi Telat", lblTransaksiTelat, fontUtama));
+        panelAtas.add(panelStat, BorderLayout.SOUTH);
+
+        panel.add(panelAtas, BorderLayout.NORTH);
+
+        // Tabel Transaksi
+        String[] kolom = {"ID Trx", "ID Penyewa", "Nama Kost", "Bulan Tagihan", "Batas Tempo", "Tgl Bayar", "Hari Telat", "Denda", "Total Bayar"};
+        modelTransaksi = new DefaultTableModel(kolom, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) { return false; }
+        };
         tabelTransaksi = new JTable(modelTransaksi);
-        panel.add(new JScrollPane(tabelTransaksi), BorderLayout.CENTER);
+        tabelTransaksi.setRowHeight(30);
+        tabelTransaksi.setFont(new Font(fontUtama, Font.PLAIN, 13));
+        tabelTransaksi.setSelectionBackground(new Color(214, 226, 242));
+        tabelTransaksi.setSelectionForeground(new Color(24, 31, 46));
+        tabelTransaksi.setShowVerticalLines(false);
+        tabelTransaksi.setGridColor(new Color(237, 238, 243));
 
-        // Panel Formulir POS Pembayaran
-        JPanel panelAksi = new JPanel(new FlowLayout());
-        JTextField txtIdPenyewa = new JTextField(4);
-        JTextField txtIdKost = new JTextField(4);
-        JTextField txtBulan = new JTextField(8); // Contoh: "Juni 2026"
-        JTextField txtHariTelatManual = new JTextField(3); // jumlah hari telat
-        JButton btnBayar = new JButton("Proses Bayar POS");
+        DecimalFormatSymbols simbol = new DecimalFormatSymbols();
+        simbol.setGroupingSeparator('.');
+        final DecimalFormat rupiah = new DecimalFormat("#,###", simbol);
 
-        panelAksi.add(new JLabel("ID Penyewa:")); panelAksi.add(txtIdPenyewa);
-        panelAksi.add(new JLabel("ID Kost:")); panelAksi.add(txtIdKost);
-        panelAksi.add(new JLabel("Bulan:")); panelAksi.add(txtBulan);
-        panelAksi.add(new JLabel("Hari Telat (Simulasi):")); panelAksi.add(txtHariTelatManual);
-        panelAksi.add(btnBayar);
-        panel.add(panelAksi, BorderLayout.SOUTH);
-
-        // Event Listener Kasir POS
-        btnBayar.addActionListener(e -> {
-            try {
-                int idPenyewa = Integer.parseInt(txtIdPenyewa.getText().trim());
-                int idKost = Integer.parseInt(txtIdKost.getText().trim());
-                String bulan = txtBulan.getText().trim();
-                int hariTelat = Integer.parseInt(txtHariTelatManual.getText().trim());
-
-                // Logika Tanggal: Menggunakan waktu hari ini sebagai acuan bayar riil
-                LocalDate tglJatuhTempo = LocalDate.now();
-                // Jika disimulasikan telat x hari, maka tglBayar diundur ke depan supaya ada penghitungan denda otomatis di objek Transaksi
-                LocalDate tglBayar = tglJatuhTempo.plusDays(hariTelat);
-
-                if (controller.bayarKost(idPenyewa, idKost, bulan, tglJatuhTempo, tglBayar)) {
-                    JOptionPane.showMessageDialog(this, "Pembayaran Kasir POS Sukses Ditambahkan!");
-                    refreshSemuaTabel();
-                    txtIdPenyewa.setText(""); txtIdKost.setText(""); txtBulan.setText(""); txtHariTelatManual.setText("");
-                } else {
-                    JOptionPane.showMessageDialog(this, "Gagal memproses pembayaran. Periksa kembali ID Kost & ID Penyewa.", "POS Error", JOptionPane.ERROR_MESSAGE);
+        DefaultTableCellRenderer rendererTrx = new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value,
+                    boolean isSelected, boolean hasFocus, int row, int column) {
+                Object tampil = value;
+                if ((column == 7 || column == 8) && value instanceof Number) {
+                    tampil = "Rp " + rupiah.format(((Number) value).doubleValue());
                 }
-            } catch (NumberFormatException ex) {
-                JOptionPane.showMessageDialog(this, "Harap masukkan data angka input dengan benar!", "Input Error", JOptionPane.ERROR_MESSAGE);
+                Component c = super.getTableCellRendererComponent(table, tampil, isSelected, hasFocus, row, column);
+                if (!isSelected) {
+                    c.setBackground(row % 2 == 0 ? Color.WHITE : new Color(247, 248, 251));
+                }
+                if (column == 7 || column == 8) {
+                    setHorizontalAlignment(RIGHT);
+                } else if (column == 0 || column == 1 || column == 2 || column == 6) {
+                    setHorizontalAlignment(CENTER);
+                } else {
+                    setHorizontalAlignment(LEFT);
+                }
+                setBorder(BorderFactory.createEmptyBorder(0, 10, 0, 10));
+                return c;
+            }
+        };
+        tabelTransaksi.setDefaultRenderer(Object.class, rendererTrx);
+
+        JTableHeader headerTabel = tabelTransaksi.getTableHeader();
+        headerTabel.setReorderingAllowed(false);
+        headerTabel.setPreferredSize(new Dimension(0, 38));
+        headerTabel.setDefaultRenderer(new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value,
+                    boolean isSelected, boolean hasFocus, int row, int column) {
+                JLabel lbl = (JLabel) super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+                lbl.setOpaque(true);
+                lbl.setBackground(indigo);
+                lbl.setForeground(Color.WHITE);
+                lbl.setFont(new Font(fontUtama, Font.BOLD, 13));
+                lbl.setHorizontalAlignment(CENTER);
+                lbl.setBorder(BorderFactory.createEmptyBorder(8, 6, 8, 6));
+                return lbl;
+            }
+        });
+
+        JScrollPane scroll = new JScrollPane(tabelTransaksi);
+        scroll.setBorder(BorderFactory.createEmptyBorder());
+        scroll.getViewport().setBackground(Color.WHITE);
+
+        JPanel wadahTabel = buatKartuBulat();
+        wadahTabel.setLayout(new BorderLayout());
+        wadahTabel.setBorder(BorderFactory.createEmptyBorder(6, 6, 6, 6));
+        wadahTabel.add(scroll, BorderLayout.CENTER);
+        panel.add(wadahTabel, BorderLayout.CENTER);
+
+        // Form Pembayaran Baru (POS Kasir)
+        JPanel formCard = buatKartuBulat();
+        formCard.setLayout(new BorderLayout(0, 10));
+        formCard.setBorder(BorderFactory.createEmptyBorder(14, 16, 14, 16));
+
+        JLabel lblForm = new JLabel("Proses Pembayaran Baru");
+        lblForm.setFont(new Font(fontUtama, Font.BOLD, 13));
+        lblForm.setForeground(indigo);
+        formCard.add(lblForm, BorderLayout.NORTH);
+
+        JPanel isiForm = new JPanel(new BorderLayout(0, 6));
+        isiForm.setOpaque(false);
+
+        // Memilih penyewa dan menampilkan info kost terkait
+        JPanel baris1 = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 4));
+        baris1.setOpaque(false);
+        JComboBox<Penyewa> cbPenyewa = new JComboBox<>();
+        cbPenyewa.setPreferredSize(new Dimension(220, 30));
+        styleComboBox(cbPenyewa, fontUtama);
+        cbPenyewa.setRenderer(new DefaultListCellRenderer() {
+            @Override
+            public Component getListCellRendererComponent(JList<?> list, Object value, int index,
+                    boolean isSelected, boolean cellHasFocus) {
+                String teks = (value instanceof Penyewa)
+                        ? "#" + ((Penyewa) value).getIdPenyewa() + " - " + ((Penyewa) value).getNamaPenyewa()
+                        : "Pilih penyewa...";
+                JLabel lbl = (JLabel) super.getListCellRendererComponent(list, teks, index, isSelected, cellHasFocus);
+                lbl.setBorder(BorderFactory.createEmptyBorder(5, 9, 5, 9));
+                lbl.setFont(new Font(fontUtama, Font.PLAIN, 13));
+                if (isSelected) {
+                    lbl.setBackground(new Color(214, 226, 242));
+                    lbl.setForeground(new Color(24, 31, 46));
+                }
+                return lbl;
+            }
+        });
+
+        JLabel lblInfoKost = buatLabel("Pilih penyewa untuk lihat info kost", fontUtama);
+        lblInfoKost.setFont(new Font(fontUtama, Font.ITALIC, 12));
+
+        baris1.add(buatLabel("Penyewa:", fontUtama)); baris1.add(cbPenyewa);
+        baris1.add(lblInfoKost);
+
+        // Bulan Tagihan dan Tahun Tagihan (untuk menghitung denda telat)
+        JPanel baris2 = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 4));
+        baris2.setOpaque(false);
+        String[] namaBulan = {"Januari", "Februari", "Maret", "April", "Mei", "Juni",
+                "Juli", "Agustus", "September", "Oktober", "November", "Desember"};
+        JComboBox<String> cbBulan = new JComboBox<>(namaBulan);
+        cbBulan.setSelectedIndex(LocalDate.now().getMonthValue() - 1);
+        styleComboBox(cbBulan, fontUtama);
+
+        JSpinner spTahun = new JSpinner(new SpinnerNumberModel(LocalDate.now().getYear(), 2020, 2100, 1));
+        JSpinner.NumberEditor editorTahun = new JSpinner.NumberEditor(spTahun, "#");
+        spTahun.setEditor(editorTahun);
+
+        baris2.add(buatLabel("Bulan:", fontUtama)); baris2.add(cbBulan);
+        baris2.add(buatLabel("Tahun:", fontUtama)); baris2.add(spTahun);
+
+        // Preview estimasi total bayar dan denda telat
+        JPanel baris3 = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 4));
+        baris3.setOpaque(false);
+
+        JLabel lblHariTelat = new JLabel("Hari Telat: -");
+        lblHariTelat.setFont(new Font(fontUtama, Font.PLAIN, 13));
+        lblHariTelat.setForeground(new Color(90, 92, 105));
+
+        JLabel lblDenda = new JLabel("Total Denda: -");
+        lblDenda.setFont(new Font(fontUtama, Font.PLAIN, 13));
+        lblDenda.setForeground(new Color(90, 92, 105));
+
+        JLabel lblPreview = new JLabel("Estimasi Total Bayar: Rp 0");
+        lblPreview.setFont(new Font(fontUtama, Font.BOLD, 14));
+        lblPreview.setForeground(hijau);
+
+        baris3.add(lblHariTelat);
+        baris3.add(new JLabel("|"));
+        baris3.add(lblDenda);
+        baris3.add(new JLabel("|"));
+        baris3.add(lblPreview);
+
+        // Hitung ulang preview setiap kali penyewa atau hari telat berubah
+        Runnable hitungPreview = () -> {
+            Penyewa p = (Penyewa) cbPenyewa.getSelectedItem();
+            if (p == null) {
+                lblHariTelat.setText("Hari Telat: -");
+                lblDenda.setText("Total Denda: -");
+                lblPreview.setText("Estimasi Total Bayar: Rp 0");
+                lblInfoKost.setText("Pilih penyewa untuk lihat info kost");
+                return;
+            }
+            Kost k = controller.getKostById(p.getIdKost());
+            if (k == null) {
+                lblHariTelat.setText("Hari Telat: -");
+                lblDenda.setText("Total Denda: -");
+                lblPreview.setText("Estimasi Total Bayar: Rp 0");
+                lblInfoKost.setText("Kost tidak ditemukan untuk penyewa ini!");
+                return;
+            }
+            double biayaSewa = k.hitungBiayaBulanan();
+            int bulanIdx = cbBulan.getSelectedIndex() + 1;
+            int tahun = (int) spTahun.getValue();
+            LocalDate batasTempo = LocalDate.of(tahun, bulanIdx, 25);
+            LocalDate tglBayar = LocalDate.now();
+
+            Transaksi preview = new Transaksi(0, 0, 0, "", batasTempo, tglBayar, biayaSewa);
+            int hariTelat = preview.getJumlahHariTelat();
+            double denda = preview.getDenda();
+            double total = preview.getTotalBayar();
+            lblInfoKost.setText("Kost: " + k.getNamaKost() + " (" + k.getTipeKost() + ") — Sewa: Rp " + rupiah.format(biayaSewa));
+            lblPreview.setText("Estimasi Total Bayar: Rp " + rupiah.format(total)
+                    + (hariTelat > 0 ? "  (termasuk denda Rp " + rupiah.format(denda) + ")" : ""));
+        };
+        cbPenyewa.addActionListener(e -> hitungPreview.run());
+        cbBulan.addActionListener(e -> hitungPreview.run());
+        spTahun.addChangeListener(e -> hitungPreview.run());
+
+        JPanel barisTombol = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 4));
+        barisTombol.setOpaque(false);
+        JButton btnBayar = new JButton("Proses Bayar POS");
+        styleButton(btnBayar, hijau, fontUtama);
+        barisTombol.add(btnBayar);
+
+        isiForm.add(baris1, BorderLayout.NORTH);
+        JPanel tengahForm = new JPanel(new BorderLayout());
+        tengahForm.setOpaque(false);
+        tengahForm.add(baris2, BorderLayout.NORTH);
+        tengahForm.add(baris3, BorderLayout.SOUTH);
+        isiForm.add(tengahForm, BorderLayout.CENTER);
+        isiForm.add(barisTombol, BorderLayout.SOUTH);
+        formCard.add(isiForm, BorderLayout.CENTER);
+        panel.add(formCard, BorderLayout.SOUTH);
+
+        // Isi ulang dropdown penyewa setiap kali tab Transaksi di-refresh
+        Runnable muatDaftarPenyewa = () -> {
+            cbPenyewa.removeAllItems();
+            for (Penyewa p : controller.getAllPenyewa()) {
+                cbPenyewa.addItem(p);
+            }
+            if (cbPenyewa.getItemCount() > 0) cbPenyewa.setSelectedIndex(0);
+            hitungPreview.run();
+        };
+        muatDaftarPenyewaTransaksi = muatDaftarPenyewa;
+        muatDaftarPenyewa.run();
+
+        // Proses bayar
+        btnBayar.addActionListener(e -> {
+            Penyewa p = (Penyewa) cbPenyewa.getSelectedItem();
+            if (p == null) {
+                JOptionPane.showMessageDialog(this, "Belum ada data penyewa untuk diproses. Tambahkan penyewa dahulu.",
+                        "Data Kosong", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            int idPenyewa = p.getIdPenyewa();
+            int idKost = p.getIdKost();
+            String bulan = cbBulan.getSelectedItem().toString() + " " + spTahun.getValue();
+            int bulanIdx = cbBulan.getSelectedIndex() + 1;
+            int tahun = (int) spTahun.getValue();
+            LocalDate tglJatuhTempo = LocalDate.of(tahun, bulanIdx, 25);
+            LocalDate tglBayar = LocalDate.now();
+            int hariTelat = tglBayar.isAfter(tglJatuhTempo)
+                ? (int) java.time.temporal.ChronoUnit.DAYS.between(tglJatuhTempo, tglBayar) : 0;
+
+            Kost k = controller.getKostById(idKost);
+            if (k == null) {
+                JOptionPane.showMessageDialog(this, "Kost milik penyewa ini tidak ditemukan di database.",
+                        "POS Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            double biayaSewa = k.hitungBiayaBulanan();
+            double denda = hariTelat * Transaksi.DENDA_PER_HARI;
+            double totalEstimasi = biayaSewa + denda;
+
+            DecimalFormatSymbols simbolKonfirmasi = new DecimalFormatSymbols();
+            simbolKonfirmasi.setGroupingSeparator('.');
+            DecimalFormat fmtKonfirmasi = new DecimalFormat("#,###", simbolKonfirmasi);
+
+            int konfirmasi = JOptionPane.showConfirmDialog(this,
+                    "Konfirmasi pembayaran:\n\n" +
+                    "Penyewa : " + p.getNamaPenyewa() + "\n" +
+                    "Kost    : " + k.getNamaKost() + " (" + k.getTipeKost() + ")\n" +
+                    "Bulan   : " + bulan + "\n" +
+                    "Hari Telat : " + hariTelat + " hari\n" +
+                    "Total Bayar : Rp " + fmtKonfirmasi.format(totalEstimasi) + "\n\n" +
+                    "Lanjutkan proses pembayaran?",
+                    "Konfirmasi Pembayaran POS", JOptionPane.YES_NO_OPTION);
+
+            if (konfirmasi != JOptionPane.YES_OPTION) return;
+
+            // LocalDate tglJatuhTempo = LocalDate.now();
+
+            if (controller.bayarKost(idPenyewa, idKost, bulan, tglJatuhTempo, tglBayar)) {
+                JOptionPane.showMessageDialog(this, "Pembayaran Kasir POS Sukses Ditambahkan!");
+                refreshSemuaTabel();
+            } else {
+                JOptionPane.showMessageDialog(this, "Gagal memproses pembayaran. Periksa kembali data penyewa & kost.", "POS Error", JOptionPane.ERROR_MESSAGE);
             }
         });
 
         return panel;
     }
 
+    // Hitung & menampilkan statistik dari data tabel Transaksi
+    private void updateStatistikTransaksi() {
+        if (modelTransaksi == null || lblTotalTransaksi == null) return;
+        int totalTrx = modelTransaksi.getRowCount();
+        double totalPemasukan = 0, totalDenda = 0;
+        int telat = 0;
+        for (int i = 0; i < totalTrx; i++) {
+            totalPemasukan += ((Number) modelTransaksi.getValueAt(i, 8)).doubleValue();
+            double denda = ((Number) modelTransaksi.getValueAt(i, 7)).doubleValue();
+            totalDenda += denda;
+            if (denda > 0) telat++;
+        }
+        DecimalFormatSymbols simbol = new DecimalFormatSymbols();
+        simbol.setGroupingSeparator('.');
+        DecimalFormat rupiah = new DecimalFormat("#,###", simbol);
+
+        lblTotalTransaksi.setText(String.valueOf(totalTrx));
+        lblTotalPemasukanTrx.setText("Rp " + rupiah.format(totalPemasukan));
+        lblTotalDendaTrx.setText("Rp " + rupiah.format(totalDenda));
+        lblTransaksiTelat.setText(String.valueOf(telat));
+    }
+
    
-    // UTILITY: REFRESH SYNCHRONIZE DATA
+    // Refresh tabel Kost, Penyewa, dan Transaksi untuk perubahan data terbaru
     private void refreshSemuaTabel() {
         // Refresh Tabel Kost
         modelKost.setRowCount(0);
@@ -525,7 +852,7 @@ public class MainFrame extends JFrame {
             modelKost.addRow(new Object[]{k.getIdKost(), k.getNamaKost(), k.getTipeKost(), k.getHargaDasar(), k.getKapasitas(), k.getTerisi()});
         }
 
-        // Refresh Tabel Penyewa (didelegasikan ke PanelPenyewa milik Nadia)
+        // Refresh Tabel Penyewa 
         if (panelPenyewa != null) {
             panelPenyewa.muatDataPenyewa();
         }
@@ -534,11 +861,17 @@ public class MainFrame extends JFrame {
         modelTransaksi.setRowCount(0);
         List<Transaksi> listTrx = controller.getAllTransaksi();
         for (Transaksi t : listTrx) {
+            Kost kTrx = controller.getKostById(t.getIdKost());
+            String namaKostTrx = (kTrx != null) ? kTrx.getNamaKost() : "ID " + t.getIdKost();
             modelTransaksi.addRow(new Object[]{
-                t.getIdTransaksi(), t.getIdPenyewa(), t.getIdKost(), t.getBulanTagihan(),
+                t.getIdTransaksi(), t.getIdPenyewa(), namaKostTrx, t.getBulanTagihan(),
                 t.getTanggalJatuhTempo(), t.getTanggalBayar(), t.getJumlahHariTelat(), t.getDenda(), t.getTotalBayar()
             });
         }
+
+        // Reload dropdown penyewa 
+        if (muatDaftarPenyewaTransaksi != null) muatDaftarPenyewaTransaksi.run();
+        updateStatistikTransaksi();
 
         // Perbarui kartu statistik panel Kost
         updateStatistikKost();
