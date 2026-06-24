@@ -79,8 +79,8 @@ public class MainFrame extends JFrame {
         
         // Masukkan masing-masing panel menu tab
         tabbedPane.addTab("Manajemen Kamar Kost", buatPanelKost());
-        tabbedPane.addTab("Penyewa", new PanelPenyewa());
-        panelPenyewa = new PanelPenyewa();
+        panelPenyewa = new PanelPenyewa(controller);
+        tabbedPane.addTab("Penyewa", panelPenyewa);
         tabbedPane.addTab("POS Kasir & Transaksi", buatPanelTransaksi());
         tabbedPane.addTab("Laporan Ringkasan", new LaporanRingkasan());
 
@@ -854,7 +854,7 @@ public class MainFrame extends JFrame {
 
         // Refresh Tabel Penyewa 
         if (panelPenyewa != null) {
-            panelPenyewa.muatDataPenyewa();
+            panelPenyewa.refreshPanel();
         }
 
         // Refresh Tabel Transaksi

@@ -5,7 +5,6 @@ import com.kostify.model.KamarPenuhException;
 import com.kostify.model.Kost;
 import com.kostify.model.Penyewa;
 import java.awt.*;
-import java.awt.geom.RoundRectangle2D;
 import java.util.List;
 import javax.swing.*;
 import javax.swing.table.DefaultTableCellRenderer;
@@ -24,7 +23,7 @@ public class PanelPenyewa extends JPanel {
     private static final Color TABLE_HEADER = new Color(18, 45, 86);
 
     // ── Controller ──────────────────────────────────────────────
-    private final KostifyController controller = new KostifyController();
+    private final KostifyController controller;
 
     // ── Komponen Form Input ──────────────────────────────────────
     private JTextField txtNama;
@@ -52,7 +51,8 @@ public class PanelPenyewa extends JPanel {
     // ════════════════════════════════════════════════════════════
     //  CONSTRUCTOR
     // ════════════════════════════════════════════════════════════
-    public PanelPenyewa() {
+    public PanelPenyewa(KostifyController controller) {
+    this.controller = controller;
         setLayout(new BorderLayout());
         setBackground(LIGHT_GRAY);
 
@@ -349,7 +349,7 @@ public class PanelPenyewa extends JPanel {
     //  LOAD DATA
     // ════════════════════════════════════════════════════════════
 
-    private void muatDataKostKeComboBox() {
+    public void muatDataKostKeComboBox() {
         listKost = controller.getAllKost();
         cmbKost.removeAllItems();
         for (Kost k : listKost) {
@@ -358,6 +358,11 @@ public class PanelPenyewa extends JPanel {
         lblTotalKost.setText(String.valueOf(listKost.size()));
     }
 
+    public void refreshPanel() {
+    muatDataPenyewa();
+    muatDataKostKeComboBox();
+    }
+    
     public void muatDataPenyewa() {
         modelTabel.setRowCount(0);
         List<Penyewa> listPenyewa = controller.getAllPenyewa();
