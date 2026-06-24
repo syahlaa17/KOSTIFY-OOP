@@ -25,6 +25,9 @@ public class MainFrame extends JFrame {
     // Panel penyewa (versi lengkap buatan Nadia) — dikelola sebagai kelas terpisah
     private PanelPenyewa panelPenyewa;
 
+    // Panel laporan ringkasan (inner class Zaidan) — perlu referensi untuk auto-refresh
+    private LaporanRingkasan laporanPanel;
+
     // Label kartu statistik panel Kost
     private JLabel lblTotalKamar, lblTerisi, lblKosong, lblHunian;
 
@@ -82,7 +85,7 @@ public class MainFrame extends JFrame {
         panelPenyewa = new PanelPenyewa(controller);
         tabbedPane.addTab("Penyewa", panelPenyewa);
         tabbedPane.addTab("POS Kasir & Transaksi", buatPanelTransaksi());
-        tabbedPane.addTab("Laporan Ringkasan", new LaporanRingkasan());
+        tabbedPane.addTab("Laporan Ringkasan", laporanPanel = new LaporanRingkasan());
 
         add(tabbedPane, BorderLayout.CENTER);
 
@@ -875,6 +878,11 @@ public class MainFrame extends JFrame {
 
         // Perbarui kartu statistik panel Kost
         updateStatistikKost();
+
+        // Perbarui data Laporan Ringkasan (supaya angka ikut berubah saat data ditambah/dihapus)
+        if (laporanPanel != null) {
+            laporanPanel.hitungLaporan();
+        }
     }
 
     // =====================================================================
@@ -964,7 +972,7 @@ public class MainFrame extends JFrame {
         //  INTI LAPORAN: mengambil data dari controller lalu menjumlahkan.
         //  Pola tiap angka sama: ambil list -> loop -> akumulasi.
         // ------------------------------------------------------------------
-        private void hitungLaporan() {
+        public void hitungLaporan() {
             // 1) TOTAL KAPASITAS KAMAR — dari fitur Kost (Maulina)
             int totalKamar = 0;
             for (Kost k : controller.getAllKost()) {
