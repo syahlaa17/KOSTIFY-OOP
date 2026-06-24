@@ -5,6 +5,7 @@ import com.kostify.model.KamarPenuhException;
 import com.kostify.model.Kost;
 import com.kostify.model.Penyewa;
 import java.awt.*;
+import java.awt.geom.RoundRectangle2D;
 import java.util.List;
 import javax.swing.*;
 import javax.swing.table.DefaultTableCellRenderer;
@@ -13,13 +14,14 @@ import javax.swing.table.JTableHeader;
 
 public class PanelPenyewa extends JPanel {
 
-    // ── Warna tema (sama dengan panel Kost) ─────────────────────
-    private static final Color DARK_BLUE   = new Color(18, 45, 85);
-    private static final Color ACCENT_RED  = new Color(180, 40, 60);
-    private static final Color WHITE       = Color.WHITE;
-    private static final Color LIGHT_GRAY  = new Color(245, 245, 245);
-    private static final Color TEXT_GRAY   = new Color(100, 100, 100);
-    private static final Color TABLE_HEADER = new Color(30, 55, 100);
+    // ── Warna tema (seragam dengan tab Kost & Laporan) ──────────
+    private static final Color DARK_BLUE    = new Color(18, 45, 86);    // navy utama
+    private static final Color DARK_BLUE2   = new Color(32, 67, 124);   // navy gradient kanan
+    private static final Color ACCENT_RED   = new Color(193, 64, 84);   // merah elegan
+    private static final Color WHITE        = Color.WHITE;
+    private static final Color LIGHT_GRAY   = new Color(241, 244, 249); // abu kebiruan
+    private static final Color TEXT_GRAY    = new Color(138, 141, 155);
+    private static final Color TABLE_HEADER = new Color(18, 45, 86);
 
     // ── Controller ──────────────────────────────────────────────
     private final KostifyController controller = new KostifyController();
@@ -78,43 +80,52 @@ public class PanelPenyewa extends JPanel {
     //  BUILDER PANEL
     // ════════════════════════════════════════════════════════════
 
-    /** Header gelap dengan ikon P dan judul */
+    /** Header gradient navy dengan ikon P dan judul */
     private JPanel buatPanelHeader() {
-        JPanel panel = new JPanel(new BorderLayout());
-        panel.setBackground(DARK_BLUE);
-        panel.setBorder(BorderFactory.createEmptyBorder(20, 25, 20, 25));
-
-        JPanel kiri = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 0));
-        kiri.setBackground(DARK_BLUE);
-
-        // Ikon kotak dengan huruf P
-        JLabel ikon = new JLabel("P") {
+        JPanel panel = new JPanel(new BorderLayout()) {
             @Override
             protected void paintComponent(Graphics g) {
-                Graphics2D g2 = (Graphics2D) g;
+                super.paintComponent(g);
+                Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(new Color(255, 255, 255, 40));
-                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 8, 8);
-                g2.setColor(WHITE);
-                g2.setFont(new Font("SansSerif", Font.BOLD, 22));
-                FontMetrics fm = g2.getFontMetrics();
-                int x = (getWidth() - fm.stringWidth("P")) / 2;
-                int y = (getHeight() + fm.getAscent() - fm.getDescent()) / 2;
-                g2.drawString("P", x, y);
+                g2.setPaint(new GradientPaint(0, 0, DARK_BLUE, getWidth(), 0, DARK_BLUE2));
+                g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 18, 18);
+                g2.dispose();
             }
         };
-        ikon.setPreferredSize(new Dimension(50, 50));
+        panel.setOpaque(false);
+        panel.setBorder(BorderFactory.createEmptyBorder(14, 16, 14, 16));
+
+        JPanel kiri = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 0));
+        kiri.setOpaque(false);
+
+        // Ikon kotak dengan huruf P (sama gaya dengan badge K di tab Kost)
+        JLabel ikon = new JLabel("P", SwingConstants.CENTER) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(Color.WHITE);
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 12, 12);
+                g2.dispose();
+                super.paintComponent(g);
+            }
+        };
+        ikon.setOpaque(false);
+        ikon.setPreferredSize(new Dimension(42, 42));
+        ikon.setFont(new Font("Segoe UI", Font.BOLD, 20));
+        ikon.setForeground(DARK_BLUE);
 
         JPanel teksPanel = new JPanel(new GridLayout(2, 1, 0, 2));
-        teksPanel.setBackground(DARK_BLUE);
+        teksPanel.setOpaque(false);
 
         JLabel judul = new JLabel("Manajemen Data Penyewa");
-        judul.setFont(new Font("SansSerif", Font.BOLD, 20));
+        judul.setFont(new Font("Segoe UI", Font.BOLD, 18));
         judul.setForeground(WHITE);
 
         JLabel sub = new JLabel("Kelola data penyewa kost: tambah, lihat, edit, dan hapus.");
-        sub.setFont(new Font("SansSerif", Font.PLAIN, 12));
-        sub.setForeground(new Color(180, 200, 220));
+        sub.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        sub.setForeground(new Color(186, 203, 226));
 
         teksPanel.add(judul);
         teksPanel.add(sub);
@@ -122,9 +133,6 @@ public class PanelPenyewa extends JPanel {
         kiri.add(ikon);
         kiri.add(teksPanel);
         panel.add(kiri, BorderLayout.CENTER);
-
-        // Padding bawah
-        panel.setBorder(BorderFactory.createEmptyBorder(18, 25, 18, 25));
         return panel;
     }
 
@@ -137,8 +145,8 @@ public class PanelPenyewa extends JPanel {
         lblTotalPenyewa = new JLabel("0");
         lblTotalKost    = new JLabel("0");
 
-        panel.add(buatKartuStat("Total Penyewa", lblTotalPenyewa, new Color(46, 139, 87)));
-        panel.add(buatKartuStat("Kost Tersedia", lblTotalKost,    new Color(30, 100, 200)));
+        panel.add(buatKartuStat("Total Penyewa",  lblTotalPenyewa, new Color(22, 138, 102)));
+        panel.add(buatKartuStat("Kost Tersedia",  lblTotalKost,    new Color(18, 45, 86)));
 
         return panel;
     }
@@ -153,10 +161,10 @@ public class PanelPenyewa extends JPanel {
         ));
 
         JLabel lbl = new JLabel(label);
-        lbl.setFont(new Font("SansSerif", Font.PLAIN, 12));
+        lbl.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         lbl.setForeground(TEXT_GRAY);
 
-        nilaiLabel.setFont(new Font("SansSerif", Font.BOLD, 28));
+        nilaiLabel.setFont(new Font("Segoe UI", Font.BOLD, 28));
         nilaiLabel.setForeground(warnaAngka);
 
         kartu.add(lbl);
@@ -180,9 +188,10 @@ public class PanelPenyewa extends JPanel {
         tabelPenyewa = new JTable(modelTabel);
         tabelPenyewa.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         tabelPenyewa.setRowHeight(30);
-        tabelPenyewa.setFont(new Font("SansSerif", Font.PLAIN, 13));
+        tabelPenyewa.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         tabelPenyewa.setGridColor(new Color(235, 235, 235));
-        tabelPenyewa.setSelectionBackground(new Color(210, 230, 255));
+        tabelPenyewa.setSelectionBackground(new Color(214, 226, 242));
+        tabelPenyewa.setSelectionForeground(new Color(24, 31, 46));
         tabelPenyewa.setBackground(WHITE);
         tabelPenyewa.setShowHorizontalLines(true);
         tabelPenyewa.setShowVerticalLines(false);
@@ -191,7 +200,7 @@ public class PanelPenyewa extends JPanel {
         JTableHeader header = tabelPenyewa.getTableHeader();
         header.setBackground(TABLE_HEADER);
         header.setForeground(WHITE);
-        header.setFont(new Font("SansSerif", Font.BOLD, 13));
+        header.setFont(new Font("Segoe UI", Font.BOLD, 13));
         header.setPreferredSize(new Dimension(0, 38));
         header.setDefaultRenderer(new DefaultTableCellRenderer() {
             @Override
@@ -200,7 +209,7 @@ public class PanelPenyewa extends JPanel {
                 super.getTableCellRendererComponent(t, v, sel, foc, r, c);
                 setBackground(TABLE_HEADER);
                 setForeground(WHITE);
-                setFont(new Font("SansSerif", Font.BOLD, 13));
+                setFont(new Font("Segoe UI", Font.BOLD, 13));
                 setHorizontalAlignment(CENTER);
                 setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 8));
                 return this;
@@ -235,7 +244,7 @@ public class PanelPenyewa extends JPanel {
 
         // Judul form
         JLabel judulForm = new JLabel("Tambah / Edit Penyewa");
-        judulForm.setFont(new Font("SansSerif", Font.BOLD, 14));
+        judulForm.setFont(new Font("Segoe UI", Font.BOLD, 14));
         judulForm.setForeground(DARK_BLUE);
         judulForm.setBorder(BorderFactory.createEmptyBorder(0, 0, 12, 0));
         wrapper.add(judulForm, BorderLayout.NORTH);
@@ -248,8 +257,8 @@ public class PanelPenyewa extends JPanel {
         gbc.fill   = GridBagConstraints.HORIZONTAL;
         gbc.anchor = GridBagConstraints.WEST;
 
-        Font labelFont = new Font("SansSerif", Font.PLAIN, 12);
-        Font fieldFont = new Font("SansSerif", Font.PLAIN, 13);
+        Font labelFont = new Font("Segoe UI", Font.PLAIN, 12);
+        Font fieldFont = new Font("Segoe UI", Font.PLAIN, 13);
 
         // Nama
         gbc.gridx = 0; gbc.gridy = 0; gbc.weightx = 0;
@@ -328,7 +337,7 @@ public class PanelPenyewa extends JPanel {
         JButton btn = new JButton(teks);
         btn.setBackground(bg);
         btn.setForeground(WHITE);
-        btn.setFont(new Font("SansSerif", Font.BOLD, 12));
+        btn.setFont(new Font("Segoe UI", Font.BOLD, 12));
         btn.setFocusPainted(false);
         btn.setBorderPainted(false);
         btn.setPreferredSize(new Dimension(150, 34));
