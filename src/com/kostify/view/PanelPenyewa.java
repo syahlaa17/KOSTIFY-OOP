@@ -48,6 +48,21 @@ public class PanelPenyewa extends JPanel {
     // ── State ────────────────────────────────────────────────────
     private int idPenyewaTerpilih = -1;
 
+    // Callback yang dipanggil setiap data penyewa berubah (tambah/update/hapus).
+    // MainFrame mengisi ini agar bisa ikut me-refresh tab lain (POS Kasir, Laporan).
+    private Runnable onDataChanged;
+
+    public void setOnDataChanged(Runnable callback) {
+        this.onDataChanged = callback;
+    }
+
+    // Panggil callback dengan aman (kalau sudah di-set)
+    private void notifyDataChanged() {
+        if (onDataChanged != null) {
+            onDataChanged.run();
+        }
+    }
+
     // ════════════════════════════════════════════════════════════
     //  CONSTRUCTOR
     // ════════════════════════════════════════════════════════════
@@ -75,10 +90,7 @@ public class PanelPenyewa extends JPanel {
         muatDataKostKeComboBox();
         muatDataPenyewa();
     }
-
-    // ════════════════════════════════════════════════════════════
     //  BUILDER PANEL
-    // ════════════════════════════════════════════════════════════
 
     /** Header gradient navy dengan ikon P dan judul */
     private JPanel buatPanelHeader() {
@@ -345,10 +357,7 @@ public class PanelPenyewa extends JPanel {
         return btn;
     }
 
-    // ════════════════════════════════════════════════════════════
     //  LOAD DATA
-    // ════════════════════════════════════════════════════════════
-
     public void muatDataKostKeComboBox() {
         listKost = controller.getAllKost();
         cmbKost.removeAllItems();
@@ -379,10 +388,7 @@ public class PanelPenyewa extends JPanel {
         lblTotalPenyewa.setText(String.valueOf(listPenyewa.size()));
     }
 
-    // ════════════════════════════════════════════════════════════
     //  EVENT HANDLER
-    // ════════════════════════════════════════════════════════════
-
     private void tambahPenyewa() {
         if (!validasiForm()) return;
         String nama = txtNama.getText().trim();
@@ -397,6 +403,7 @@ public class PanelPenyewa extends JPanel {
                 muatDataPenyewa();
                 muatDataKostKeComboBox();
                 bersihkanForm();
+                notifyDataChanged(); // kabari MainFrame agar tab POS & Laporan ikut refresh
             } else {
                 JOptionPane.showMessageDialog(this,
                     "Gagal mendaftarkan penyewa. Coba lagi.", "Error", JOptionPane.ERROR_MESSAGE);
@@ -425,6 +432,7 @@ public class PanelPenyewa extends JPanel {
                 "Data penyewa berhasil diperbarui!", "Sukses", JOptionPane.INFORMATION_MESSAGE);
             muatDataPenyewa();
             bersihkanForm();
+            notifyDataChanged(); // kabari MainFrame agar tab POS & Laporan ikut refresh
         } else {
             JOptionPane.showMessageDialog(this,
                 "Gagal memperbarui data.", "Error", JOptionPane.ERROR_MESSAGE);
@@ -440,7 +448,7 @@ public class PanelPenyewa extends JPanel {
         String namaPenyewa = (String) modelTabel.getValueAt(baris, 1);
 
         int konfirmasi = JOptionPane.showConfirmDialog(this,
-            "Hapus penyewa \"" + namaPenyewa + "\"?\nKuota kamar akan berkurang 1.",
+            "Hapus penyewa \"" + namaPenyewa + "\"?\nKamar akan kembali tersedia (kuota terisi berkurang 1).",
             "Konfirmasi Hapus", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
 
         if (konfirmasi == JOptionPane.YES_OPTION) {
@@ -451,6 +459,7 @@ public class PanelPenyewa extends JPanel {
                 muatDataPenyewa();
                 muatDataKostKeComboBox();
                 bersihkanForm();
+                notifyDataChanged(); // kabari MainFrame agar tab POS & Laporan ikut refresh
             } else {
                 JOptionPane.showMessageDialog(this,
                     "Gagal menghapus penyewa.", "Error", JOptionPane.ERROR_MESSAGE);
@@ -482,10 +491,7 @@ public class PanelPenyewa extends JPanel {
         btnUpdate.setEnabled(false);
         btnHapus.setEnabled(false);
     }
-
-    // ════════════════════════════════════════════════════════════
     //  HELPER / VALIDASI
-    // ════════════════════════════════════════════════════════════
 
     private boolean validasiForm() {
         String nama = txtNama.getText().trim();
